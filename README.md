@@ -1,4 +1,4 @@
-# ECE243: Computer Organization
+# ECE243: Computer Organization (Annie's Branch)
 > Programming labs in Nios II Architecture. By Annie Wang and Samar Qureshi.
 
 ## How to use [CPUlator](https://cpulator.01xz.net/?sys=nios-de1soc&d_audio=48000)
@@ -11,3 +11,4 @@
 - Breakpoints can be set at a specific memory address where you want the execution to pause 
     - Useful for debugging or examining the state of the program at certain points, such as before or after a loop or a function call
     - Use `Continue` command to run the program until it reaches the breakpoint 
+- To set the register values back to 0, you can click on the register values and `Compile and Load` the program again
