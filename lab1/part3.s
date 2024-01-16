@@ -18,5 +18,10 @@ myloop:
     addi r8, r8, 1  /*increase iterator*/
     add r12, r12, r8  /*add iterator to the sum*/
     ble r8, r9, myloop /*loop back if the iterator is less than or equal to 30*/
+.equ    LEDs, 0xFF200000
+    movia r25, LEDs
+    stwio r12, (r25)
 
 done: br done /*; infinite loop*/
+
+ 
