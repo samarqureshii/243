@@ -43,9 +43,17 @@ found:
         stw r13, (r15) # now store it into result 
         br iloop
 
+.equ LEDs, 0xFF200000
+movia r18, LEDs
+stwio r13, (r18)
+
 notFound: 
         movi r13, -1 # return -1 if the student number doesn't exist 
         stw r13, (r15) # now store it in result 
+        
+.equ LEDs, 0xFF200000
+movia r18, LEDs
+stwio r13, (r18)
 
 iloop: br iloop
 
