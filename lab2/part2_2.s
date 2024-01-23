@@ -41,14 +41,20 @@ loop:
 
         br loop
 
-found: 
-        ldb r13, (r14) # load the grade into r13
-        stw r13, (r15) # now store it into result 
-        br iloop
+found:
+    ldw r13, (r14) # load the grade into r13
+    stw r13, (r15) # now store it into result
+    br updateLEDs  # Go to common LED update code
 
-notFound: 
-        movi r13, -1 # return -1 if the student number doesn't exist 
-        stb r13, (r15) # now store it in result 
+notFound:
+    movi r13, -1   # return -1 if the student number doesn't exist
+    stw r13, (r15) # now store it in result
+
+updateLEDs:
+    .equ LEDs, 0xFF200000
+    movia r18, LEDs
+    stwio r13, (r18) # Update LEDs with the grade or -1
+    br iloop         # Go to infinite loop
 
 iloop: br iloop
 
