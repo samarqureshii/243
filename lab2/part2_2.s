@@ -10,16 +10,16 @@ _start:
 /* Your code goes here  */
     movia r17, result
     
-    movia r11, Snumbers #Put Snumbers into r11
-    movia r14, Grades #put grades into r14
+    movia r11, Snumbers # Put Snumbers into r11
+    movia r14, Grades # put grades into r14
     
     
 loop:
-    addi r13, r13, 1 #Increment counter
-    ldw r12, (r11) #Put first number into r12
-    beq    r12, r0, gloop #exit loop when Snumbers is at end of array
-    addi r11, r11, 4 #Advance 1 word address through Snumbers
-    bne r10, r12, loop #loop if not equal to search value
+    addi r13, r13, 1 # Increment counter
+    ldw r12, (r11) # Put first number into r12
+    beq    r12, r0, gloop # exit loop when Snumbers is at end of array
+    addi r11, r11, 4 # Advance 1 word address through Snumbers
+    bne r10, r12, loop # loop if not equal to search value
     br gloop
     
 gloop:
