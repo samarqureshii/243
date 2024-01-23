@@ -64,7 +64,7 @@ iloop: br iloop
 /* result should hold the grade of the student number put into r10, or
 -1 if the student number isn't found */ 
 
-SnumberToSearch: .word 423195
+SnumberToSearch: .word 4
 
 result: .byte 0
         .align 2 # assembler ensures the next piece of data is aligned on a 2^2 boundary
