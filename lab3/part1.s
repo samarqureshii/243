@@ -26,7 +26,7 @@ _start:
     movi r17, 1            # stores the number 1
 
 forLoop:
-    slli r13, r17, r12     # shift left the value 1 by r12 positions
+    sll r13, r17, r12     # shift left the value 1 by r12 positions
     and r14, r9, r13       # bitwise AND r9 with r13
     bne r14, r0, setBit    # if r14 is not zero, then the bit is set
     br notSet
