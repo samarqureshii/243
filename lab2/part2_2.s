@@ -10,7 +10,7 @@ _start:
 
 
 movia r10, SnumberToSearch # r10 is where you put the address of the student number being searched for
-
+addi r11,r10,1
 # use r11 to iterate through each of the addresses in the Snumbers label 
 movia r11, Snumbers # begin at the start index of SNumbers
 
@@ -64,7 +64,7 @@ iloop: br iloop
 /* result should hold the grade of the student number put into r10, or
 -1 if the student number isn't found */ 
 
-SnumberToSearch: .word 4
+SnumberToSearch: .word 423195
 
 result: .byte 0
         .align 2 # assembler ensures the next piece of data is aligned on a 2^2 boundary
