@@ -25,7 +25,7 @@ _start:
     movi r16, 32           # maximum number of bits
     movi r17, 1            # stores the number 1
 
-forLoop:
+forLoop: # for(int i = 0; i< 32; i++) if (InputWord & (1 << i)) r12++
     sll r13, r17, r12     # shift left the value 1 by r12 positions
     and r14, r9, r13       # bitwise AND r9 with r13
     bne r14, r0, setBit    # if r14 is not zero, then the bit is set
