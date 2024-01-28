@@ -9,7 +9,7 @@ _start:
     movi r5, 0 # r5 will keep track of the current largest ones
     movi r6, 0 # r6 will keep track of the current largest zeros
     movia sp, 0x20000 # sp = stack poitner 
-    movi r19, 0xFFFFFFFF
+    movi r19, 0xFFFFFFFF # for bit inversion 
 
     findLargest:
         ldw r4, 0(r8) # load the current number (index we are currently on in TEST_NUM) into r4
@@ -17,20 +17,24 @@ _start:
         # branch to finished if r4 = 0
         call ONES # run the subroutine to count the 1s
         bgt r10, r5, updateOnes # if the count in r10 is larger than r5, then update r5
+        br continue
 
-        xor r4, r4, r19 # flip all the digits 
-        call ONES # run the subroutine to count the 0s
-        bgt r10, r6, updateZeros
-        
-        addi r8, r8, 4 # increment the address pointer in TEST_NUM
-        br findLargest
+        continue:
+            xor r4, r4, r19 # flip all the digits 
+            movi r17, 1
+            call ONES # run the subroutine to count the 0s
+            bgt r10, r6, updateZeros
+            br continue2
+        continue2:
+            addi r8, r8, 4 # increment the address pointer in TEST_NUM
+            br findLargest
 
         updateOnes: # if we have found a new number with more set bits (more 1s)
             mov r5, r10 # update the current largest number 
-            br findLargest # go back to the main loop
+            br continue # continue
         updateZeros:
             mov r6, r10
-            br findLargest
+            br continue2
             
         
     finished:
@@ -47,11 +51,11 @@ _start:
 
 ONES:
     # saving the registers on the stack
-    subi sp, sp, 16 # we want to save 4*2 = 8 
+    subi sp, sp, 12 # we want to save 4*2 = 8 
     stw ra, 0(sp)     
-    stw r10, 4(sp)    
-    stw r16, 8(sp)    
-    stw r17, 12(sp)   
+    # stw r10, 4(sp)    
+    stw r16, 4(sp)    
+    stw r17, 8(sp)   
     # stw r12, 12(sp) # loop counter - do we need to save this on the stack?
 
     movi r10, 0             # initialize the count of set bits to 0
@@ -72,10 +76,10 @@ ONES:
 
     # now restore the registers from the stack (pop) 
     ldw ra, 0(sp)     
-    ldw r10, 4(sp)    
-    ldw r16, 8(sp)    
-    ldw r17, 12(sp)  
-    addi sp, sp, 16 
+    # ldw r10, 4(sp)    
+    ldw r16, 4(sp)    
+    ldw r17, 8(sp)  
+    addi sp, sp, 12
 
     ret
     
