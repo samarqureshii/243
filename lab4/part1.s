@@ -66,11 +66,16 @@ poll: # polling loop to wait for any of the possible KEYs to repond
         call Delay
 
         beq r15, r20, minNum
+        beq r15, r0, minNum2
+
         subi r15, r15, 1
         br updateLEDs
 
         minNum:
             mov r15, r20
+            br updateLEDs
+        minNum2:
+            mov r15, r0
             br updateLEDs
 
     KEY3: # if KEY3 is pressed, it will reset/blank the display
