@@ -80,10 +80,10 @@ _start:
             stwio r14, (r19) # update LEDs
             br poll
     
-        ; resetCounter:
-        ;     movi r14, 0
-        ;     stwio r14, 0(r19) # update LEDs
-        ;     br poll 
+        # ; resetCounter:
+        # ;     movi r14, 0
+        # ;     stwio r14, 0(r19) # update LEDs
+        # ;     br poll 
 
 ioCheck: # check if a key has been pressed and handle it
     and r13, r12, r7 # where r7 is the bit mask for every case
