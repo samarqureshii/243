@@ -21,6 +21,7 @@
 _start:
     movi r5, 0      # Set r5 to 0 to select HEX0 for display
     movi r4, 0      # Start with the first digit to display
+    movi r14, 0b10000
     movia sp, 0x20000 # sp = stack poitner 
     movia r20, TIMER_BASE
 
@@ -58,11 +59,23 @@ digit_loop:
 
     # increment the digit and wrap around from 0xF back to 0
     addi r4, r4, 1   # increment the digit
-    andi r4, r4, 0xF # ensure the digit wraps around from F to 0
-    bne r4, r0, digit_loop
+    # andi r4, r4, 0xF # ensure the digit wraps around from F to 0
+    bne r4, r14, digit_loop
 
     # ;if not equal to 0, then we increment the HEX display and blank the current one 
     movi r4, 0b10000 # blank the current hex by writing 1 to the 4th bit
+    
+    subi sp, sp, 8     
+    stw r4, 4(sp)      
+    stw r5, 0(sp)     
+
+    call HEX_DISP  
+
+    # ;pop operation
+    ldw r4, 4(sp)      
+    ldw r5, 0(sp)     
+    addi sp, sp, 8    
+
     addi r5, r5, 1 # increment the HEX display
     # andi r5, r5, 0b101 # ensure the HEX displays wrap around back to HEX0 when we finish HEX5
 
