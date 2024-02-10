@@ -17,7 +17,7 @@ _start:
     movia r19, LEDs 
     movia r20, TIMER_BASE
 
-    # start the timer 
+    # starting the timer 
     stwio r0, (r20)
     movia r21, COUNTER_START
     srli r22, r21, 0xf # mask the upper 16 bits
