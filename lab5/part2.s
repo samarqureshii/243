@@ -87,7 +87,7 @@ _start:
         movi r5, 0 # register stores which HEX we will display the value on (max 0b101 for HEX5)
         movia r18, KEY_BASE
         
-        stwio r3, 0xc(r18) # clear edge capture bit for all KEY
+        # stwio r3, 0xc(r18) # clear edge capture bit for all KEY
         stwio r3, 0x8(r18) # turn on the interrupt mask register for all KEYs
 
 
