@@ -20,7 +20,7 @@ IRQ_HANDLER:
         stw     et, 0(sp)           
         stw     ra, 4(sp)
         stw     r20, 8(sp)
-        stw     r2, 12(sp)        
+        # stw     r2, 12(sp)        
         stw     r4, 16(sp)
         stw     r5, 20(sp)
         stw     r6, 24(sp)
@@ -48,11 +48,12 @@ END_ISR:
         ldw     r6, 24(sp)
         ldw     r5, 20(sp)
         ldw     r4, 16(sp)
-        ldw     r2, 12(sp)
+        # ldw     r2, 12(sp)
         ldw     r20, 8(sp)
         ldw     ra, 4(sp)
         ldw     et, 0(sp)
         addi    sp, sp, 44
+        # wrctl ctl0, r1     # write to control register 0 to re-enable interrupts
         eret                        # return from exception
 
 /*********************************************************************************
@@ -81,7 +82,7 @@ _start:
         # If KEY0 pressed, then display 0 on HEX0, if KEY1 pressed, then display 1 on HEX1, etc
         # ;if we press and release a key again, we blank the display if it was previously on 
         movi r1, 0x1 # need to turn on bit 0 in several registers
-        movi r2, 0x2 # may need to turn on bit 1 elsewhere 
+        movi r9, 0x2 # may need to turn on bit 1 elsewhere 
         movi r3, 0xf
         movi r4, 0 # initialize r4 with 0. This register keeps track of 4 bit value that will be displayed on the HEX (max 0b1111 for "F")
         movi r5, 0 # register stores which HEX we will display the value on (max 0b101 for HEX5)
@@ -92,15 +93,21 @@ _start:
 
 
         # 3. ENABLE INTERUPTS IN NIOS II
-        wrctl ctl3, r2 # ctl3 also called ienable reg - bit 1 enables interupts for IRQ1->buttons
+        wrctl ctl3, r9 # ctl3 also called ienable reg - bit 1 enables interupts for IRQ1->buttons
         wrctl ctl0, r1 # ; ctl 0 also called status reg - bit 0 is Proc Interrupt Enable (PIE) bit, 
         # bit 1 is the User/Supervisor bit = 0 means supervisor
         
 IDLE:   br  IDLE
 
 KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
+        subi    sp, sp, 16
+        stw     ra, 0(sp)
+        stw     r19, 4(sp)
+        stw     r21, 8(sp)
+        stw     r2, 12(sp)
+
         ldwio r19, 0xc(r18) # load Edge Capture reg for the KEY_BASE
-        movia r20, HEX_BASE1
+        # movia r22, HEX_BASE1
         movi r21, 0 # temp reg for each of the results of the bit masking 
 
         # check to see which KEY caused the interrupt (prof rose: was it you, was it you, was it you?)
@@ -146,7 +153,14 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
                 # addi sp, sp, 8    
 
                 stwio r19, 0xc(r18) # clear edge capture register so we can prepare to handle the next interrupt 
-                br END_ISR
+
+                ldw     r2, 12(sp)
+                ldw     r21, 8(sp)
+                ldw     r19, 4(sp)
+                ldw     ra, 0(sp)
+                addi    sp, sp, 16
+                # br END_ISR
+                ret
 
 
 HEX_DISP:   movia    r8, BIT_CODES         # starting address of the bit codes
