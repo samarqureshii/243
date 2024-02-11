@@ -16,10 +16,19 @@
 IRQ_HANDLER:
         # save any registers the INT handler touches
         # save registers on the stack (et, ra, ea, others as needed)
-        subi    sp, sp, 16          # make room on the stack
-        stw     et, 0(sp)
+        subi    sp, sp, 44          
+        stw     et, 0(sp)           
         stw     ra, 4(sp)
         stw     r20, 8(sp)
+        stw     r2, 12(sp)        
+        stw     r4, 16(sp)
+        stw     r5, 20(sp)
+        stw     r6, 24(sp)
+        stw     r7, 28(sp)
+        stw     r8, 32(sp)
+        stw     r19, 36(sp)
+        stw     r21, 40(sp)
+
 
         rdctl   et, ctl4            # read exception type
         beq     et, r0, SKIP_EA_DEC # not external?
@@ -32,11 +41,18 @@ SKIP_EA_DEC:
         call    KEY_ISR             # if yes, call the pushbutton ISR
 
 END_ISR:
-        ldw     et, 0(sp)           # restore registers
-        ldw     ra, 4(sp)
+        ldw     r21, 40(sp)
+        ldw     r19, 36(sp)         # Restore in reverse order.
+        ldw     r8, 32(sp)
+        ldw     r7, 28(sp)
+        ldw     r6, 24(sp)
+        ldw     r5, 20(sp)
+        ldw     r4, 16(sp)
+        ldw     r2, 12(sp)
         ldw     r20, 8(sp)
-        ldw     ea, 12(sp)
-        addi    sp, sp, 16          # restore stack pointer
+        ldw     ra, 4(sp)
+        ldw     et, 0(sp)
+        addi    sp, sp, 44
         eret                        # return from exception
 
 /*********************************************************************************
@@ -81,7 +97,7 @@ _start:
         
 IDLE:   br  IDLE
 
-KEY_ISR:
+KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
         ldwio r19, 0xc(r18) # load Edge Capture reg for the KEY_BASE
         movia r20, HEX_BASE1
         movi r21, 0 # temp reg for each of the results of the bit masking 
@@ -117,18 +133,18 @@ KEY_ISR:
 
         cont: # now update the HEX
                 # ;push operation
-                subi sp, sp, 8     
-                stw r4, 4(sp)      
-                stw r5, 0(sp)     
+               #  subi sp, sp, 8     
+                # stw r4, 0(sp)      
+                # stw r5, 4(sp)     
 
                 call HEX_DISP  
 
                 # ;pop operation
-                ldw r4, 4(sp)      
-                ldw r5, 0(sp)     
-                addi sp, sp, 8    
+                # ldw r4, 0(sp)      
+                # ldw r5, 4(sp)     
+                # addi sp, sp, 8    
 
-                stwio r19, 0xc(r18) # clear edge capture register 
+                stwio r19, 0xc(r18) # clear edge capture register so we can prepare to handle the next interrupt 
                 br END_ISR
 
 
