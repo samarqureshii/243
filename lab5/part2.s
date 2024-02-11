@@ -82,12 +82,13 @@ _start:
         # ;if we press and release a key again, we blank the display if it was previously on 
         movi r1, 0x1 # need to turn on bit 0 in several registers
         movi r2, 0x2 # may need to turn on bit 1 elsewhere 
+        movi r3, 0xf
         movi r4, 0 # initialize r4 with 0. This register keeps track of 4 bit value that will be displayed on the HEX (max 0b1111 for "F")
         movi r5, 0 # register stores which HEX we will display the value on (max 0b101 for HEX5)
         movia r18, KEY_BASE
         
-        stwio r1, 0xc(r18) # clear edge capture bit for KEY0 if it was on, writing into EC reg
-        stwio r1, 0x8(r18) # turn on the interrupt mask register bit 0 for KEY 0 
+        stwio r3, 0xc(r18) # clear edge capture bit for all KEY
+        stwio r3, 0x8(r18) # turn on the interrupt mask register for all KEYs
 
 
         # 3. ENABLE INTERUPTS IN NIOS II
