@@ -16,7 +16,7 @@
 IRQ_HANDLER:
         # save any registers the INT handler touches
         # save registers on the stack (et, ra, ea, others as needed)
-        subi    sp, sp, 44          
+        subi    sp, sp, 60          
         stw     et, 0(sp)           
         stw     ra, 4(sp)
         stw     r20, 8(sp)
@@ -28,8 +28,11 @@ IRQ_HANDLER:
         stw     r8, 32(sp)
         stw     r19, 36(sp)
         stw     r21, 40(sp)
-
-
+        /*stw     r10, 44(sp)
+        stw     r11, 48(sp)
+        stw     r12, 52(sp)
+        stw     r13, 56(sp)*/
+         
         rdctl   et, ctl4            # read exception type
         beq     et, r0, SKIP_EA_DEC # not external?
         subi    ea, ea, 4           # decrement ea by 4 for external interrupts
@@ -41,6 +44,10 @@ SKIP_EA_DEC:
         call    KEY_ISR             # if yes, call the pushbutton ISR
 
 END_ISR:
+        /*ldw     r13, 56(sp)
+        ldw     r12, 52(sp)
+        ldw     r11, 48(sp)
+        ldw     r10, 44(sp)*/
         ldw     r21, 40(sp)
         ldw     r19, 36(sp)         # Restore in reverse order.
         ldw     r8, 32(sp)
@@ -52,7 +59,7 @@ END_ISR:
         ldw     r20, 8(sp)
         ldw     ra, 4(sp)
         ldw     et, 0(sp)
-        addi    sp, sp, 44
+        addi    sp, sp, 60
         # wrctl ctl0, r1     # write to control register 0 to re-enable interrupts
         eret                        # return from exception
 
@@ -74,7 +81,11 @@ END_ISR:
 .equ HEX_BASE2, 0xff200030
 
 _start:
-        
+         /*movi r10, 0
+         movi r11, 0
+         movi r12, 0
+         movi r13, 0*/
+
         # 1. INIT SP
         movia sp, 0x20000 # sp = stack pointer 
 
@@ -100,11 +111,15 @@ _start:
 IDLE:   br  IDLE
 
 KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
-        subi    sp, sp, 16
+        subi    sp, sp, 32
         stw     ra, 0(sp)
         stw     r19, 4(sp)
         stw     r21, 8(sp)
         stw     r2, 12(sp)
+        /*stw     r10, 16(sp)
+        stw     r11, 20(sp)
+        stw     r12, 24(sp)
+        stw     r13, 28(sp)*/
 
         ldwio r19, 0xc(r18) # load Edge Capture reg for the KEY_BASE
         # movia r22, HEX_BASE1
@@ -123,20 +138,32 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
 
 
         DISPLAY_HEX0:
-                movi r4, 0
-                movi r5, 0
+                xori r10, r10, 1     
+                movi r4, 0            
+                movi r5, 0            
+                bne r10, r0, cont 
+                movi r4, 0b10000     
                 br cont
         DISPLAY_HEX1:
-                movi r4, 1
-                movi r5, 1
+                xori r11, r11, 1     
+                movi r4, 1           
+                movi r5, 1            
+                bne r11, r0, cont 
+                movi r4, 0b10000     
                 br cont
         DISPLAY_HEX2:
-                movi r4, 2
-                movi r5, 2
+                xori r12, r12, 1     
+                movi r4, 2           
+                movi r5, 2           
+                bne r12, r0, cont 
+                movi r4, 0b10000     
                 br cont
         DISPLAY_HEX3:
-                movi r4, 3
-                movi r5, 3
+                xori r13, r13, 1     
+                movi r4, 3            
+                movi r5, 3            
+                bne r13, r0, cont 
+                movi r4, 0b10000     
                 br cont
 
         cont: # now update the HEX
@@ -154,11 +181,15 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
 
                 stwio r19, 0xc(r18) # clear edge capture register so we can prepare to handle the next interrupt 
 
+                /*ldw     r13, 28(sp)
+                ldw     r12, 24(sp)
+                ldw     r11, 20(sp)
+                ldw     r10, 16(sp)*/
                 ldw     r2, 12(sp)
                 ldw     r21, 8(sp)
                 ldw     r19, 4(sp)
                 ldw     ra, 0(sp)
-                addi    sp, sp, 16
+                addi    sp, sp, 32
                 # br END_ISR
                 ret
 
