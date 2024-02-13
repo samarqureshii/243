@@ -61,7 +61,7 @@ END_ISR:
 .equ LED_BASE, 0xff200000
 .equ KEY_BASE, 0xff200050 
 .equ TIMER_BASE, 0xff202000
-.equ COUNTER_START, 7000000
+# .equ COUNTER_START, 7000000
 
 _start:
     /* Set up stack pointer */
@@ -70,11 +70,11 @@ _start:
     call    CONFIG_KEYS         # configure the KEYs port
     movi r2, 0b10
 
-    movi r23, 0b11
-    wrctl ctl3, r23 # bit 0 enables interupts for IRQ0 -> timer, bit 1 enables interupts for IRQ1->button
+    movi r4, 0b11
+    wrctl ctl3, r4 # bit 0 enables interupts for IRQ0 -> timer, bit 1 enables interupts for IRQ1->button
 
-    movi r24, 0b1
-    wrctl ctl0, r24 # ; ctl 0 also called status reg - bit 0 is Proc Interrupt Enable (PIE) bit, 
+    movi r4, 1
+    wrctl ctl0, r4 # ; ctl 0 also called status reg - bit 0 is Proc Interrupt Enable (PIE) bit, 
     # bit 1 is the User/Supervisor bit = 0 means supervisor
 
     movia   r8, LED_BASE        # LEDR base address (0xFF200000)  
@@ -87,21 +87,22 @@ LOOP:
 
 # use r8 - r15 and are not saved 
 CONFIG_TIMER: # generates one interrupt every 0.25s
-    movia r11, COUNTER_START
-    movia   r10, TIMER_BASE
+    movia   r8, TIMER_BASE
 
-    movi r9, 0x8 # stop timer in case it was running
-    stwio r9, 0x4(r10)
+    movi r9, 0b1000 # stop timer in case it was running
+    stwio r9, 0x4(r8)
+    stwio r0, (r8) # reset timer 
 
-    stwio r0, (r10) # reset timer 
+    movia r10, COUNTER_START
+    # load in the counter value from global memory
+    ldw r9, (r10)
+    srli r10, r9, 0xf # mask the upper 16 bits
+    andi r9, r9, 0xffff # mask the lower 16 bits 
+    stwio r9, 0x8(r8) # write to the timer period register (low)
+    stwio r10, 0xc(r8) # write to the timer period register (high)
 
-    srli r12, r11, 0xf # mask the upper 16 bits
-    andi r11, r11, 0xffff # mask the lower 16 bits 
-    stwio r11, 0x8(r10) # write to the timer period register (low)
-    stwio r12, 0xc(r10) # write to the timer period register (high)
-
-    movi r11, 0b111 # enable continuous mode and start the timer and interrupt (START AND CONTINUE and ITO bits)
-    stwio r11, 0x4(r10) # write to timer control register TO 
+    movi r9, 0b111 # enable continuous mode and start the timer and interrupt (START AND CONTINUE and ITO bits)
+    stwio r9, 0x4(r8) # write to timer control register TO 
 
     /*ldw r22, 4(sp)
     ldw r21, 0(sp)
@@ -119,105 +120,93 @@ CONFIG_KEYS:
     ret
 
 # use r16 - r23 and use the stack to save 
-KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
-    # IN KEY_ISR:
-    # When KEY0 is pressed, RUN variable should be toggled (start/stop the timer)
-    # When KEY1 is pressed, rate at which COUNT is incremented is doubled (shift to the left)
-    # When KEY2 pressed, rate should be halved (shift to the  right)
-    # To change the rate, stop the timer within the KEY service routine, modify value in the load timer, and restart the timer 
-    subi sp, sp, 36
-    stw r16, 0(sp)
-    stw r17, 4(sp)
-    stw r18, 8(sp)
-    stw r19, 12(sp)
-    stw r20, 16(sp)
-    stw r21, 20(sp)
-    stw r22, 24(sp)
-    stw r23, 28(sp)
-    stw r24, 32(sp)
+KEY_ISR:
+    subi sp, sp, 36                      # Save registers and allocate space for local use
+    stw ra, 0(sp)                        # Save return address
+    stw r16, 4(sp)                       # Save used registers
+    stw r17, 8(sp)
+    stw r18, 12(sp)
+    stw r19, 16(sp)
+    stw r20, 20(sp)
+    stw r21, 24(sp)
+    stw r22, 28(sp)
+    stw r23, 32(sp)
 
-    movia r16, KEY_BASE
-    ldwio r17, 0xc(r16)  
+    movia r16, KEY_BASE                  # Base address of KEY peripheral
+    ldwio r17, 0xC(r16)                  # Read the edge capture register
 
+    # Clear the Edge Capture Register
+    movi r18, 0b1111
+    stwio r18, 0xC(r16)
 
-    andi r18, r17, 0x1       
-    beq r
-    andi r19, r17, 0x2       
-    andi r20, r17, 0x4       
+    andi r18, r17, 0x1                   # Check if KEY0 was pressed
+    bne r18, r0, HANDLE_KEY0
 
-    # clear the Edge Capture Register to acknowledge the interrupt
-    movi r21, 0b1111
-    stwio r21, 0xc(r16)
-    
-    bne r18, r0, TOGGLE_RUN
-    bne r19, r0, DOUBLE_RATE
-    bne r20, r0, HALVE_RATE
+    andi r18, r17, 0x2                   # Check if KEY1 was pressed
+    bne r18, r0, HANDLE_KEY1
 
-    br EXIT_ISR
+    andi r18, r17, 0x4                   # Check if KEY2 was pressed
+    bne r18, r0, HANDLE_KEY2
 
-    TOGGLE_RUN:
+    br EXIT_ISR                          # If no key or other keys, exit ISR
+
+    HANDLE_KEY0:
         movia r22, RUN
         ldw r23, 0(r22)
-        xori r23, r23, 0x1
+        xori r23, r23, 1
         stw r23, 0(r22)
         br EXIT_ISR
 
-    DOUBLE_RATE:
-        movia r16, TIMER_BASE
-        movia r22, COUNTER_START
-        ldw r23, (r22)
-        # movi r24, 2147483647
-        # bge r23, r24, SKIP_DOUBLE
-        slli r23, r23, 1    # double the rate
-        # SKIP_DOUBLE:
-            stw r23, (r22) # store the new doubled rate into COUNTER_START global var 
-            call CONFIG_TIMER
-        /*stwio r0, 4(r16) # stop the timer
-        stwio r0, 0(r16) # reset the timer 
+    HANDLE_KEY1: # double the timer here
+        # interrupt caused by KEY1
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        slli r18, r18, 1 # double the counter value and store it back into the global counter variable
+        stw r18, (r16)
 
-        # load the new timer period 
-        srli r24, r23, 16
-        andi r23, r23, 0xffff
-        stwio r23, 0x8(r16)
-        stwio r24, 0xc(r16)
-        
-        # restart the timer with new configurations
-        movi r17, 0b111 # enable cont, start, and enable interrupt
-        stwio r17, 0x4(r16)*/
-        br EXIT_ISR
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)      
+        br EXIT_ISR  
 
-    HALVE_RATE:
-        movia r16, TIMER_BASE
-        movia r22, COUNTER_START
-        ldw r23, 0(r22)
-        srli r23, r23, 1     # half the rate 
-        stw r23, 0(r22) # store the new halved rate into COUNTER_START global var
-        call CONFIG_TIMER
-        /*, r23, 0xffff
-        stwio r23, 0x8(r16)
-        stwio r24, 0xc(r16)
-        
-        # restart the timer with new configurations
-        movi r17, 0b111 # enable cont, start, and enable interrupt
-        stwio r17, 0x4(r16)*/
-        br EXIT_ISR
+    HANDLE_KEY2: # half the timer here
+        # interrupt caused by KEY2
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        srli r18, r18, 1 # half the rate
+        stw r18, (r16)
+
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)
+        br EXIT_ISR    
 
     EXIT_ISR:
-        # clear Edge Capture register to prepare for the next interrupt 
-        movi r17, 0b1111 # could also write 0b1111 to make sure we cleared ALL the keys 
-        stwio r17, 0xc(r16) # clear edge capture register so we can prepare to handle the next interrupt
-
-        ldw r24, 32(sp)
-        ldw r23, 28(sp)
-        ldw r22, 24(sp)
-        ldw r21, 20(sp)
-        ldw r20, 16(sp)
-        ldw r19, 12(sp)
-        ldw r18, 8(sp)
-        ldw r17, 4(sp)
-        ldw r16, 0(sp)
-        addi sp, sp, 36
-        ret
+        ldw ra, 0(sp)                       
+        ldw r16, 4(sp)
+        ldw r17, 8(sp)
+        ldw r18, 12(sp)
+        ldw r19, 16(sp)
+        ldw r20, 20(sp)
+        ldw r21, 24(sp)
+        ldw r22, 28(sp)
+        ldw r23, 32(sp)
+        addi sp, sp, 36                      
+        ret                                 
 
 # use r16 - r23 and use the stack to save 
 TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER 
@@ -258,5 +247,142 @@ COUNT:  .word    0x0            # used by timer
 .global  RUN                    # used by pushbutton KEYs
 RUN:    .word    0x1            # initial value to increment COUNT
 
-.end
+.global COUNTER_START
+COUNTER_START:
+    .word 25000000
+    .end
+
+# LEGACY
+
+/* DOUBLE_RATE:
+        movia r16, TIMER_BASE
+        movia r22, COUNTER_START
+        ldw r23, (r22)
+        # movi r24, 2147483647
+        # bge r23, r24, SKIP_DOUBLE
+        slli r23, r23, 1    # double the rate
+        # SKIP_DOUBLE:
+            stw r23, (r22) # store the new doubled rate into COUNTER_START global var 
+            call CONFIG_TIMER
+        /*stwio r0, 4(r16) # stop the timer
+        stwio r0, 0(r16) # reset the timer 
+
+        # load the new timer period 
+        srli r24, r23, 16
+        andi r23, r23, 0xffff
+        stwio r23, 0x8(r16)
+        stwio r24, 0xc(r16)
+        
+        # restart the timer with new configurations
+        movi r17, 0b111 # enable cont, start, and enable interrupt
+        stwio r17, 0x4(r16)
+        br EXIT_ISR
+
+    HALVE_RATE:
+        movia r16, TIMER_BASE
+        movia r22, COUNTER_START
+        ldw r23, 0(r22)
+        srli r23, r23, 1     # half the rate 
+        stw r23, 0(r22) # store the new halved rate into COUNTER_START global var
+        call CONFIG_TIMER
+        /*, r23, 0xffff
+        stwio r23, 0x8(r16)
+        stwio r24, 0xc(r16)
+        
+        # restart the timer with new configurations
+        movi r17, 0b111 # enable cont, start, and enable interrupt
+        stwio r17, 0x4(r16)
+        br EXIT_ISR 
+        
+        KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
+    # IN KEY_ISR:
+    # When KEY0 is pressed, RUN variable should be toggled (start/stop the timer)
+    # When KEY1 is pressed, rate at which COUNT is incremented is doubled (shift to the left)
+    # When KEY2 pressed, rate should be halved (shift to the  right)
+    # To change the rate, stop the timer within the KEY service routine, modify value in the load timer, and restart the timer 
+    subi sp, sp, 32
+    stw r16, 0(sp)
+    stw r17, 4(sp)
+    stw r18, 8(sp)
+    stw r19, 12(sp)
+    stw r20, 16(sp)
+    stw r21, 20(sp)
+    stw r22, 24(sp)
+    stw r23, 28(sp)
+
+    movia r16, KEY_BASE
+    ldwio r17, 0xc(r16)   # r17 contains initial value of Edge Capture Register 
+
+    # clear the edge capture register 
+    movi r21, 0b1111
+    stwio r21, 0xc(r16)
+
+    # first determine who caused the interrupt 
+    andi r18, r17, 0x1       
+    beq r18, r0, KEY1_OR_KEY2 # branch if interrupt caused by KEY1 or KEY2
+
+    # interrupt caused by KEY0:     
+    movia r22, RUN
+    ldw r23, 0(r22)
+    xori r23, r23, 0x1
+    stw r23, 0(r22)
+    br EXIT_ISR
+
+    KEY1_OR_KEY2: # narrow down who caused the interrupt (KEY1 or KEY2)
+        andi r18, r17, 0x2 
+        beq r18, r0, KEY2
+
+        # interrupt caused by KEY1
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        slli r18, r18, 1 # double the counter value and store it back into the global counter variable
+        stw r18, (r16)
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)      
+        br EXIT_ISR  
+
+    
+    KEY2: # probably KEY2, or an anomaly
+        andi r18, r17, 0x4
+        beq r18, r0, END_ISR # bruh who the hell interrupted then???
+
+        # interrupt caused by KEY2
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        srli r18, r18, 1 # half the rate
+        stw r18, (r16)
+
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)
+        br EXIT_ISR          
+
+    EXIT_ISR:
+        ldw r23, 28(sp)
+        ldw r22, 24(sp)
+        ldw r21, 20(sp)
+        ldw r20, 16(sp)
+        ldw r19, 12(sp)
+        ldw r18, 8(sp)
+        ldw r17, 4(sp)
+        ldw r16, 0(sp)
+        addi sp, sp, 32
+        
+        ret
+*/
 
