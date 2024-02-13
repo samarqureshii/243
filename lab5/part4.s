@@ -160,8 +160,8 @@ TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER
     stw r19, 12(sp)
     stw r20, 16(sp)
 
-    movia r16, TIMER_BASE    
-    stwio r0, (r16)           
+    movia r20, TIMER_BASE    
+    stwio r0, (r20)           
 
     movia r16, COUNT           
     ldw r17, (r16)    
@@ -171,10 +171,10 @@ TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER
     add r17, r17, r19         
     stw r17, (r16)            
 
-    movia r16, COUNT
+    /*movia r16, COUNT
     movia r17, RUN
 
-    /*movia r18, TIMER_BASE
+    movia r18, TIMER_BASE
     stwio r0, (r18) # clear timer interrupt flag by writing any value to timer status register 
 
     ldw r19, (r16) # load the count value
@@ -217,18 +217,17 @@ LOOP:
 # use r8 - r15 and are not saved 
 CONFIG_TIMER: # generates one interrupt every 0.25s
     movia   r8, TIMER_BASE
+    movia r11, COUNTER_START
 
     movi r9, 0b1000 # stop timer in case it was running
     stwio r9, 0x4(r8)
     stwio r0, (r8) # reset timer 
-
-    movia r10, COUNTER_START
     # load in the counter value from global memory
-    ldw r9, (r10)
-    srli r10, r9, 16 # mask the upper 16 bits
+    ldw r9, (r11)
+    srli r11, r9, 16 # mask the upper 16 bits
     andi r9, r9, 0xffff # mask the lower 16 bits 
     stwio r9, 0x8(r8) # write to the timer period register (low)
-    stwio r10, 0xc(r8) # write to the timer period register (high)
+    stwio r11, 0xc(r8) # write to the timer period register (high)
 
     movi r9, 0b111 # enable continuous mode and start the timer and interrupt (START AND CONTINUE and ITO bits)
     stwio r9, 0x4(r8) # write to timer control register TO 
