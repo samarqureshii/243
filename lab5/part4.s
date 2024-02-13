@@ -74,9 +74,9 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
     stw r18, 8(sp)
     stw r19, 12(sp)
     stw r20, 16(sp)
-    /*stw r21, 20(sp)
+    stw r21, 20(sp)
     stw r22, 24(sp)
-    stw r23, 28(sp)*/
+    stw r23, 28(sp)
 
     movia r16, KEY_BASE
     ldwio r17, 0xc(r16)   # r17 contains initial value of Edge Capture Register 
@@ -94,7 +94,7 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
     # br EXIT_ISR
 
     KEY1_OR_KEY2: # narrow down who caused the interrupt (KEY1 or KEY2)
-        andi r18, r17, 0b10
+        andi r18, r17, 0x2
         beq r18, r0, KEY2
         stwio r18, 0xC(r16)        # Reset the edge capture bit for KEY1
 
@@ -117,7 +117,7 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
 
     
     KEY2: # probably KEY2, or an anomaly
-        andi r18, r17, 0b100
+        andi r18, r17, 0x4
         beq r18, r0, EXIT_ISR # bruh who the hell interrupted then???
         stwio r18, 0xC(r16)        # Reset the edge capture bit for KEY2
         # interrupt caused by KEY2
@@ -139,9 +139,9 @@ KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
         # br EXIT_ISR          
 
     EXIT_ISR:
-        /*ldw r23, 28(sp)
+        ldw r23, 28(sp)
         ldw r22, 24(sp)
-        ldw r21, 20(sp)*/
+        ldw r21, 20(sp)
         ldw r20, 16(sp)
         ldw r19, 12(sp)
         ldw r18, 8(sp)
@@ -160,20 +160,21 @@ TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER
     stw r19, 12(sp)
     stw r20, 16(sp)
 
-    movia r16, TIMER_BASE      # Move the base address of the timer into r16
-    stwio r0, (r16)            # Write 0 to the timer base address to clear the timeout bit
+    movia r16, TIMER_BASE    
+    stwio r0, (r16)           
 
-    movia r16, COUNT           # Move the address of the COUNT variable into r16
-    ldw r17, (r16)             # Load the current value of COUNT into r17
-    movia r18, RUN             # Move the address of the RUN variable into r18
-    ldw r19, (r18)             # Load the current value of RUN into r19
-    add r17, r17, r19          # Add the values of COUNT and RUN, updating COUNT
-    stw r17, (r16)             # Store the updated COUNT back into memory
+    movia r16, COUNT           
+    ldw r17, (r16)    
 
-    /*movia r16, COUNT
+    movia r18, RUN           
+    ldw r19, (r18)           
+    add r17, r17, r19         
+    stw r17, (r16)            
+
+    movia r16, COUNT
     movia r17, RUN
 
-    movia r18, TIMER_BASE
+    /*movia r18, TIMER_BASE
     stwio r0, (r18) # clear timer interrupt flag by writing any value to timer status register 
 
     ldw r19, (r16) # load the count value
