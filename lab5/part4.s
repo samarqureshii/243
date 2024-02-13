@@ -14,8 +14,6 @@
     # when RUN = 0, main program will display static count on LEDs 
     # when RUN = 1, the count shown on the LEDs (in binary) will increment every 0.25s
 
-
-.section .exceptions, "ax"
 /******************************************************************************
  * Write an interrupt service routine
  *****************************************************************************/
@@ -63,11 +61,141 @@ END_ISR:
 .equ TIMER_BASE, 0xff202000
 # .equ COUNTER_START, 7000000
 
+# use r16 - r23 and use the stack to save 
+KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
+    # IN KEY_ISR:
+    # When KEY0 is pressed, RUN variable should be toggled (start/stop the timer)
+    # When KEY1 is pressed, rate at which COUNT is incremented is doubled (shift to the left)
+    # When KEY2 pressed, rate should be halved (shift to the  right)
+    # To change the rate, stop the timer within the KEY service routine, modify value in the load timer, and restart the timer 
+    subi sp, sp, 32
+    stw r16, 0(sp)
+    stw r17, 4(sp)
+    stw r18, 8(sp)
+    stw r19, 12(sp)
+    stw r20, 16(sp)
+    /*stw r21, 20(sp)
+    stw r22, 24(sp)
+    stw r23, 28(sp)*/
+
+    movia r16, KEY_BASE
+    ldwio r17, 0xc(r16)   # r17 contains initial value of Edge Capture Register 
+
+    # first determine who caused the interrupt 
+    andi r18, r17, 1
+    beq r18, r0, KEY1_OR_KEY2 # branch if interrupt caused by KEY1 or KEY2
+
+    # interrupt caused by KEY0:    
+    stwio r18, 0xC(r16)        # Reset the edge capture bit for KEY0 
+    movia r18, RUN           
+    ldw r19, (r18)            
+    xori r19, r19, 1          
+    stw r19, (r18)             
+    # br EXIT_ISR
+
+    KEY1_OR_KEY2: # narrow down who caused the interrupt (KEY1 or KEY2)
+        andi r18, r17, 0b10
+        beq r18, r0, KEY2
+        stwio r18, 0xC(r16)        # Reset the edge capture bit for KEY1
+
+        # interrupt caused by KEY1
+        movia r18, COUNTER_START
+        ldw r19, (r18)
+        srli r19, r19, 1 # double the counter value and store it back into the global counter variable
+        stw r19, (r18)
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b111           
+        stwio r20, 0x4(r18)      
+        # br EXIT_ISR  
+
+    
+    KEY2: # probably KEY2, or an anomaly
+        andi r18, r17, 0b100
+        beq r18, r0, EXIT_ISR # bruh who the hell interrupted then???
+        stwio r18, 0xC(r16)        # Reset the edge capture bit for KEY2
+        # interrupt caused by KEY2
+        movia r18, COUNTER_START
+        ldw r19, (r18)
+        slli r19, r19, 1 # half the rate
+        stw r19, (r18)
+
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)
+        # br EXIT_ISR          
+
+    EXIT_ISR:
+        /*ldw r23, 28(sp)
+        ldw r22, 24(sp)
+        ldw r21, 20(sp)*/
+        ldw r20, 16(sp)
+        ldw r19, 12(sp)
+        ldw r18, 8(sp)
+        ldw r17, 4(sp)
+        ldw r16, 0(sp)
+        addi sp, sp, 32
+        
+        ret           
+
+# use r16 - r23 and use the stack to save 
+TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER 
+    subi sp, sp, 20
+    stw r16, 0(sp)
+    stw r17, 4(sp)
+    stw r18, 8(sp)
+    stw r19, 12(sp)
+    stw r20, 16(sp)
+
+    movia r16, TIMER_BASE      # Move the base address of the timer into r16
+    stwio r0, (r16)            # Write 0 to the timer base address to clear the timeout bit
+
+    movia r16, COUNT           # Move the address of the COUNT variable into r16
+    ldw r17, (r16)             # Load the current value of COUNT into r17
+    movia r18, RUN             # Move the address of the RUN variable into r18
+    ldw r19, (r18)             # Load the current value of RUN into r19
+    add r17, r17, r19          # Add the values of COUNT and RUN, updating COUNT
+    stw r17, (r16)             # Store the updated COUNT back into memory
+
+    /*movia r16, COUNT
+    movia r17, RUN
+
+    movia r18, TIMER_BASE
+    stwio r0, (r18) # clear timer interrupt flag by writing any value to timer status register 
+
+    ldw r19, (r16) # load the count value
+    ldw r20, (r17) # load the run value 
+    add r19, r19, r20 # add RUN to COUNT
+    # now store new COUNT value back into memory
+    stw r19, (r16)*/
+
+    ldw r20, 16(sp)
+    ldw r19, 12(sp)
+    ldw r18, 8(sp)
+    ldw r17, 4(sp)
+    ldw r16, 0(sp)
+    addi sp, sp, 20
+
+    ret
+
 _start:
     /* Set up stack pointer */
     movia sp, 0x20000
-    call    CONFIG_TIMER        # configure the Timer
-    call    CONFIG_KEYS         # configure the KEYs port
+    call CONFIG_TIMER        # configure the Timer
+    call CONFIG_KEYS         # configure the KEYs port
     movi r2, 0b10
 
     movi r4, 0b11
@@ -96,7 +224,7 @@ CONFIG_TIMER: # generates one interrupt every 0.25s
     movia r10, COUNTER_START
     # load in the counter value from global memory
     ldw r9, (r10)
-    srli r10, r9, 0xf # mask the upper 16 bits
+    srli r10, r9, 16 # mask the upper 16 bits
     andi r9, r9, 0xffff # mask the lower 16 bits 
     stwio r9, 0x8(r8) # write to the timer period register (low)
     stwio r10, 0xc(r8) # write to the timer period register (high)
@@ -117,125 +245,6 @@ CONFIG_KEYS:
     stwio r9, 0xc(r8) # clear edge capture
     stwio r9, 0x8(r8) # turn on the interrupt mask register for all KEYs
     
-    ret
-
-# use r16 - r23 and use the stack to save 
-KEY_ISR:
-    subi sp, sp, 36                      # Save registers and allocate space for local use
-    stw ra, 0(sp)                        # Save return address
-    stw r16, 4(sp)                       # Save used registers
-    stw r17, 8(sp)
-    stw r18, 12(sp)
-    stw r19, 16(sp)
-    stw r20, 20(sp)
-    stw r21, 24(sp)
-    stw r22, 28(sp)
-    stw r23, 32(sp)
-
-    movia r16, KEY_BASE                  # Base address of KEY peripheral
-    ldwio r17, 0xC(r16)                  # Read the edge capture register
-
-    # Clear the Edge Capture Register
-    movi r18, 0b1111
-    stwio r18, 0xC(r16)
-
-    andi r18, r17, 0x1                   # Check if KEY0 was pressed
-    bne r18, r0, HANDLE_KEY0
-
-    andi r18, r17, 0x2                   # Check if KEY1 was pressed
-    bne r18, r0, HANDLE_KEY1
-
-    andi r18, r17, 0x4                   # Check if KEY2 was pressed
-    bne r18, r0, HANDLE_KEY2
-
-    br EXIT_ISR                          # If no key or other keys, exit ISR
-
-    HANDLE_KEY0:
-        movia r22, RUN
-        ldw r23, 0(r22)
-        xori r23, r23, 1
-        stw r23, 0(r22)
-        br EXIT_ISR
-
-    HANDLE_KEY1: # double the timer here
-        # interrupt caused by KEY1
-        movia r16, COUNTER_START
-        ldw r18, (r16)
-        slli r18, r18, 1 # double the counter value and store it back into the global counter variable
-        stw r18, (r16)
-
-        # now reconfigure the timer
-        movia r18, TIMER_BASE     
-        movi r20, 0b1000          
-        stwio r20, 0x4(r18)        
-        srli r20, r19, 16         
-        andi r19, r19, 0xffff    
-        stwio r19, 0x8(r18)       
-        stwio r20, 0xC(r18)        
-        movi r20, 0b0111           
-        stwio r20, 0x4(r18)      
-        br EXIT_ISR  
-
-    HANDLE_KEY2: # half the timer here
-        # interrupt caused by KEY2
-        movia r16, COUNTER_START
-        ldw r18, (r16)
-        srli r18, r18, 1 # half the rate
-        stw r18, (r16)
-
-        # now reconfigure the timer
-        movia r18, TIMER_BASE     
-        movi r20, 0b1000          
-        stwio r20, 0x4(r18)        
-        srli r20, r19, 16         
-        andi r19, r19, 0xffff    
-        stwio r19, 0x8(r18)       
-        stwio r20, 0xC(r18)        
-        movi r20, 0b0111           
-        stwio r20, 0x4(r18)
-        br EXIT_ISR    
-
-    EXIT_ISR:
-        ldw ra, 0(sp)                       
-        ldw r16, 4(sp)
-        ldw r17, 8(sp)
-        ldw r18, 12(sp)
-        ldw r19, 16(sp)
-        ldw r20, 20(sp)
-        ldw r21, 24(sp)
-        ldw r22, 28(sp)
-        ldw r23, 32(sp)
-        addi sp, sp, 36                      
-        ret                                 
-
-# use r16 - r23 and use the stack to save 
-TIMER_ISR: # INTERRUPT SERVICE ROUTINE FOR TIMER 
-    subi sp, sp, 20
-    stw r16, 0(sp)
-    stw r17, 4(sp)
-    stw r18, 8(sp)
-    stw r19, 12(sp)
-    stw r20, 16(sp)
-
-    movia r16, COUNT
-    movia r17, RUN
-
-    movia r18, TIMER_BASE
-    stwio r0, (r18) # clear timer interrupt flag by writing any value to timer status register 
-
-    ldw r19, (r16) # load the count value
-    ldw r20, (r17) # load the run value 
-    add r19, r19, r20 # add RUN to COUNT
-    # now store new COUNT value back into memory
-    stw r19, (r16)
-
-    ldw r20, 16(sp)
-    ldw r19, 12(sp)
-    ldw r18, 8(sp)
-    ldw r17, 4(sp)
-    ldw r16, 0(sp)
-    addi sp, sp, 20
-
     ret
 
 
@@ -294,7 +303,7 @@ COUNTER_START:
         stwio r17, 0x4(r16)
         br EXIT_ISR 
         
-        KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
+KEY_ISR: # INTERRUPT SERVICE ROUTINE FOR IF A KEY WAS PRESSED
     # IN KEY_ISR:
     # When KEY0 is pressed, RUN variable should be toggled (start/stop the timer)
     # When KEY1 is pressed, rate at which COUNT is incremented is doubled (shift to the left)
@@ -384,5 +393,93 @@ COUNTER_START:
         addi sp, sp, 32
         
         ret
+
+KEY_ISR:
+    subi sp, sp, 36                      
+    stw ra, 0(sp)                        
+    stw r16, 4(sp)                      
+    stw r17, 8(sp)
+    stw r18, 12(sp)
+    stw r19, 16(sp)
+    stw r20, 20(sp)
+    stw r21, 24(sp)
+    stw r22, 28(sp)
+    stw r23, 32(sp)
+
+    movia r16, KEY_BASE                  # Base address of KEY peripheral
+    ldwio r17, 0xC(r16)                  # Read the edge capture register
+
+    # Clear the Edge Capture Register
+    movi r18, 0b1111
+    stwio r18, 0xC(r16)
+
+    andi r18, r17, 0x1                   # Check if KEY0 was pressed
+    bne r18, r0, HANDLE_KEY0
+
+    andi r18, r17, 0x2                   # Check if KEY1 was pressed
+    bne r18, r0, HANDLE_KEY1
+
+    andi r18, r17, 0x4                   # Check if KEY2 was pressed
+    bne r18, r0, HANDLE_KEY2
+
+    br EXIT_ISR                          # If no key or other keys, exit ISR
+
+    HANDLE_KEY0:
+        movia r22, RUN
+        ldw r23, 0(r22)
+        xori r23, r23, 1
+        stw r23, 0(r22)
+        br EXIT_ISR
+
+    HANDLE_KEY1: # double the timer here
+        # interrupt caused by KEY1
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        slli r18, r18, 1 # double the counter value and store it back into the global counter variable
+        stw r18, (r16)
+
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 0xf         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b111           
+        stwio r20, 0x4(r18)      
+        br EXIT_ISR  
+
+    HANDLE_KEY2: # half the timer here
+        # interrupt caused by KEY2
+        movia r16, COUNTER_START
+        ldw r18, (r16)
+        srli r18, r18, 1 # half the rate
+        stw r18, (r16)
+
+        # now reconfigure the timer
+        movia r18, TIMER_BASE     
+        movi r20, 0b1000          
+        stwio r20, 0x4(r18)        
+        srli r20, r19, 16         
+        andi r19, r19, 0xffff    
+        stwio r19, 0x8(r18)       
+        stwio r20, 0xC(r18)        
+        movi r20, 0b0111           
+        stwio r20, 0x4(r18)
+        br EXIT_ISR    
+
+    EXIT_ISR:
+        ldw r23, 32(sp)
+        ldw r22, 28(sp)
+        ldw r21, 24(sp)
+        ldw r20, 20(sp)
+        ldw r19, 16(sp)
+        ldw r18, 12(sp)
+        ldw r17, 8(sp)
+        ldw r16, 4(sp)
+        ldw ra, 0(sp)
+        addi sp, sp, 36                      
+        ret                      
 */
 
