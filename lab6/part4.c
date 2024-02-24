@@ -6,6 +6,9 @@
 // current sound is also coming out even while the echo comes and fades away 
 
 #define AUDIO_BASE			0xFF203040
+#define SAMPLE_RATE         8000
+#define DAMPING_COEFF       0.7
+#define N                   0.4
 
 struct audio_t {
     volatile unsigned int control;  // The control/status register
@@ -18,7 +21,45 @@ struct audio_t {
 };
 
 struct audio_t *const audio_p = ((struct audio_t *) AUDIO_BASE); //pointer to audio
+int buffer[3200]; //8000*N = 3200 where N = 0.4
+int idx = 0; // echo index in the echo buffer
+
+// Store the output from N cycles ago, which recursively includes the fading versions of what happened in 2N, 3N, 4N... time ago
+// output(t) = Input(t) + D*Output(t-N), where D is the damping coefficient < 1
+// keep that last N samples that were output, and get infinite fade by doing so 
+// do we need to store something in a matrix?
+
+void echo(int input){
+    input*=0.7; //lower volume
+    int output = input + (DAMPING_COEFF*buffer[idx]); //Output(t) = Input(t) + D*Output(t-N)
+
+    // zener diodes to clip @ 24 bits (0x7FFFFF)
+    output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
+
+    // write the output to output FIFO if space available
+    if(audio_p->wsrc > 0 || audio_p->wslc > 0){
+    audio_p->ldata = output;
+        audio_p->rdata = output;
+    }
+
+    //update the buffer
+    buffer[idx] = output;
+
+    //increment the index counter
+    idx = (idx+1) % 3200;
+
+}
 
 int main(void){
+    //init the buffer
+    for(int i = 0; i<3200; i++){
+        buffer[i] = 0;
+    }
 
+    while(1){
+        if((audio_p->wsrc > 0 || audio_p->wslc > 0) && (audio_p->rarc > 0 || audio_p->ralc > 0)) { // check if space in the FIFO
+            int input = audio_p->ldata; // mono input (not dual channel)
+            echo(input);
+        }
+    }
 }
