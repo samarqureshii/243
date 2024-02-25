@@ -29,8 +29,8 @@ int idx = 0; // echo index in the echo buffer
 
 void echo(int inputL, int inputR){
 
-    int outputL = (bufferL[idx] / 7) + inputL;  
-    int outputR = (bufferR[idx] / 7) + inputR;  
+    int outputL = (bufferL[idx] / 9) + inputL;  
+    int outputR = (bufferR[idx] / 9) + inputR;  
 
     //output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
 
