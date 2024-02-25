@@ -18,7 +18,8 @@ struct audio_t {
 };
 
 struct audio_t *const audio_p = ((struct audio_t *) AUDIO_BASE); //pointer to audio
-int buffer[3200]; //8000*N = 3200 where N = 0.4
+int bufferL[3200]; //8000*N = 3200 where N = 0.4
+int bufferR[3200]; //8000*N = 3200 where N = 0.4
 int idx = 0; // echo index in the echo buffer
 
 // Store the output from N cycles ago, which recursively includes the fading versions of what happened in 2N, 3N, 4N... time ago
@@ -26,16 +27,19 @@ int idx = 0; // echo index in the echo buffer
 // keep that last N samples that were output, and get infinite fade by doing so 
 // do we need to store something in a matrix?
 
-void echo(int input){
-    int output = input + ((buffer[idx])/7); //Output(t) = Input(t) + D*Output(t-N)
+void echo(int inputL, int inputR){
+
+    int outputL = (bufferL[idx] / 7) + inputL;  
+    int outputR = (bufferR[idx] / 7) + inputR;  
 
     //output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
 
     //update the buffer
-    buffer[idx] = output;
+    bufferL[idx] = outputL;
+    bufferR[idx] = outputR;
 
-    audio_p->ldata = output;
-    audio_p->rdata = output;
+    audio_p->ldata = outputL;
+    audio_p->rdata = outputR;
 
     // write the output to output FIFO if space available
     // if(audio_p->wsrc > 0 || audio_p->wslc > 0){
@@ -51,13 +55,15 @@ void echo(int input){
 int main(void){
     //init the buffer
     for(int i = 0; i < 3200; i++){
-        buffer[i] = 0;
+        bufferL[i] = 0;
+        bufferR[i] = 0;
     }
 
     while(1){
         if((audio_p->rarc > 0 || audio_p->ralc > 0)) { 
-            int input = audio_p->ldata;
-            echo(input);
+            int inputL = audio_p->ldata;
+            int inputR = audio_p->rdata;
+            echo(inputL, inputR);
         }
     }
 }
