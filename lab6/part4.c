@@ -6,9 +6,6 @@
 // current sound is also coming out even while the echo comes and fades away 
 
 #define AUDIO_BASE			0xFF203040
-#define SAMPLE_RATE         8000
-#define DAMPING_COEFF       0.7
-#define N                   0.4
 
 struct audio_t {
     volatile unsigned int control;  // The control/status register
@@ -30,15 +27,15 @@ int idx = 0; // echo index in the echo buffer
 // do we need to store something in a matrix?
 
 void echo(int input){
-    input*=0.7; //lower volume
-    int output = input + (DAMPING_COEFF*buffer[idx]); //Output(t) = Input(t) + D*Output(t-N)
+    //input*=0.7; //lower volume
+    int output = input + (int)(0.4*buffer[idx]); //Output(t) = Input(t) + D*Output(t-N)
 
     // zener diodes to clip @ 24 bits (0x7FFFFF)
     output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
 
     // write the output to output FIFO if space available
     if(audio_p->wsrc > 0 || audio_p->wslc > 0){
-    audio_p->ldata = output;
+        audio_p->ldata = output;
         audio_p->rdata = output;
     }
 
@@ -52,14 +49,13 @@ void echo(int input){
 
 int main(void){
     //init the buffer
-    for(int i = 0; i<3200; i++){
+    for(int i = 0; i < 3200; i++){
         buffer[i] = 0;
     }
 
     while(1){
-        if((audio_p->wsrc > 0 || audio_p->wslc > 0) && (audio_p->rarc > 0 || audio_p->ralc > 0)) { // check if space in the FIFO
-            int input = audio_p->ldata; // mono input (not dual channel)
-            echo(input);
+        if((audio_p->rarc > 0 || audio_p->ralc > 0)) { 
+            echo(audio_p->ldata);
         }
     }
 }
