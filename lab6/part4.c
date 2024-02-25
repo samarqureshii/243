@@ -27,20 +27,18 @@ int idx = 0; // echo index in the echo buffer
 // do we need to store something in a matrix?
 
 void echo(int input){
-    //input*=0.7; //lower volume
-    int output = input + (int)(0.4*buffer[idx]); //Output(t) = Input(t) + D*Output(t-N)
+    int output = input + ((int)(0.4*buffer[(idx+1) % 3200])); //Output(t) = Input(t) + D*Output(t-N)
 
-    // zener diodes to clip @ 24 bits (0x7FFFFF)
     output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
+
+    //update the buffer
+    buffer[idx] = output;
 
     // write the output to output FIFO if space available
     if(audio_p->wsrc > 0 || audio_p->wslc > 0){
         audio_p->ldata = output;
         audio_p->rdata = output;
     }
-
-    //update the buffer
-    buffer[idx] = output;
 
     //increment the index counter
     idx = (idx+1) % 3200;
