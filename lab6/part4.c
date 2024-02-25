@@ -29,16 +29,19 @@ int idx = 0; // echo index in the echo buffer
 void echo(int input){
     int output = input + ((int)(0.4*buffer[(idx+1) % 3200])); //Output(t) = Input(t) + D*Output(t-N)
 
-    output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
+    //output = (output > 0x7FFFFF) ? 0x7FFFFF : ((output < -0x800000) ? -0x800000 : output);
 
     //update the buffer
     buffer[idx] = output;
 
+    audio_p->ldata = output;
+    audio_p->rdata = output;
+
     // write the output to output FIFO if space available
-    if(audio_p->wsrc > 0 || audio_p->wslc > 0){
-        audio_p->ldata = output;
-        audio_p->rdata = output;
-    }
+    // if(audio_p->wsrc > 0 || audio_p->wslc > 0){
+    //     audio_p->ldata = output;
+    //     audio_p->rdata = output;
+    // }
 
     //increment the index counter
     idx = (idx+1) % 3200;
@@ -53,7 +56,8 @@ int main(void){
 
     while(1){
         if((audio_p->rarc > 0 || audio_p->ralc > 0)) { 
-            echo(audio_p->ldata);
+            int input = audio_p->ldata;
+            echo(input);
         }
     }
 }
