@@ -1,5 +1,6 @@
 # ECE243: Computer Organization
 > Programming labs in Nios II Architecture. By Annie Wang and Samar Qureshi.
+[My course notes here!](https://samarqureshi.notion.site/ECE243-Computer-Organization-920e28b7f4044b1a96aea6d001a3f926?pvs=4)
 
 ## How to use [CPUlator](https://cpulator.01xz.net/?sys=nios-de1soc&d_audio=48000)
 - Write the code in the editor
