@@ -61,11 +61,11 @@ void draw_line(int x1, int y1, int x2, int y2, short int colour){ //draw a line 
 
     for(int x = x1; x <= x2; x++){
         if(isSteep){
-            draw_pixel(y,x);
+            plot_pixel(y,x, colour);
         }
 
         else{
-            draw_pixel(x,y);
+            plot_pixel(x,y, colour);
         }
 
         error+=deltaY;
