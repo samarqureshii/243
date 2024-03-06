@@ -69,6 +69,7 @@ _start:
         movi r16, 100
         bne r15, r16, noOverflow # if no overflow, go to update LEDs
         movi r15, 0 # reset hundredths
+        
         addi r14, r14, 1 # increment seconds
         movi r16, 8
         bne r14, r16, noOverflow # if no overflow, go to update LEDs

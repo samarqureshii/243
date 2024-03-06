@@ -10,7 +10,7 @@ _start:
 
 
 movia r10, SnumberToSearch # r10 is where you put the address of the student number being searched for
-addi r11,r10,1
+# addi r11,r10,1
 # use r11 to iterate through each of the addresses in the Snumbers label 
 movia r11, Snumbers # begin at the start index of SNumbers
 

@@ -5,10 +5,8 @@
 #include <stdbool.h>
 int pixel_buffer_start; // global variable (may cause CPUlator warning)
 
-int main(void)
-{
+int main(void){
     volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
-    /* Read location of the pixel buffer from the pixel buffer controller */
     pixel_buffer_start = *pixel_ctrl_ptr;
 
     clear_screen();

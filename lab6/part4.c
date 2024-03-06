@@ -38,14 +38,14 @@ void echo(int inputL, int inputR){
     bufferL[idx] = outputL;
     bufferR[idx] = outputR;
 
-    audio_p->ldata = outputL;
-    audio_p->rdata = outputR;
+    // audio_p->ldata = outputL;
+    // audio_p->rdata = outputR;
 
-    // write the output to output FIFO if space available
-    // if(audio_p->wsrc > 0 || audio_p->wslc > 0){
-    //     audio_p->ldata = output;
-    //     audio_p->rdata = output;
-    // }
+    //write the output to output FIFO if space available
+    if(audio_p->wsrc > 0 || audio_p->wslc > 0){
+        audio_p->ldata = outputL;
+        audio_p->rdata = outputR;
+    }
 
     //increment the index counter
     idx = (idx+1) % 3200;

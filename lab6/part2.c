@@ -11,8 +11,10 @@ struct audio_t {
 	volatile unsigned int control;  // The control/status register
 	volatile unsigned char rarc;	// the 8 bit RARC register
 	volatile unsigned char ralc;	// the 8 bit RALC register
+
 	volatile unsigned char wsrc;	// the 8 bit WSRC register
 	volatile unsigned char wslc;	// the 8 bit WSLC register
+    
     volatile unsigned int ldata;	// the 32 bit (really 24) left data register
 	volatile unsigned int rdata;	// the 32 bit (really 24) right data register
 };
