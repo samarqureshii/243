@@ -15,8 +15,8 @@ Use double buffering
 
 int pixel_buffer_start; // global variable
 volatile int * pixel_ctrl_ptr = (int *) 0xff203020; // base address
-short int Buffer1[240][320]; // 240 rows, 512 (320 + padding) columns
-short int Buffer2[240][320];
+short int Buffer1[240][512]; // 240 rows, 512 (320 + padding) columns
+short int Buffer2[240][512] ;
 int pixelInfoBuf1[8][2] = {0};
 int pixelInfoBuf2[8][2] = {0};
 int pixelInfo[8][4] = {0};
@@ -33,7 +33,7 @@ void erasePrev(int pixelInfoBuf1[][2], int pixelInfoBuf2[][2]);
 void storePrev(int pixelInfo[][4], int pixelInfoBuf[][2]);
 
 int main(void){
-    //srand(time(NULL)); //seed the start locations
+    srand(time(NULL)); //seed the start locations
     // global  and directions of each of the boxes (referenced by the top left corner)
     int x1 = rand() % 300, y1 = rand() % 200, direction_x1 = (rand() % 2) * 2 - 1, direction_y1 = (rand() % 2) * 2 - 1;
     int x2 = rand() % 300, y2 = rand() % 200, direction_x2 = (rand() % 2) * 2 - 1, direction_y2 = (rand() % 2) * 2 - 1;
@@ -62,16 +62,16 @@ int main(void){
     /* now, swap the front/back buffers, to set the front buffer location */
     wait_for_vsync();
     /* initialize a pointer to the pixel buffer, used by drawing functions */
-    pixel_buffer_start = *pixel_ctrl_ptr;
+    pixel_buffer_start = (int)*pixel_ctrl_ptr;
     clear_screen();
      // pixel_buffer_start points to the pixel buffer
-    printf("Initial clear of the screen\n");
+    //printf("Initial clear of the screen\n");
 
     /* set back pixel buffer to Buffer 2 */
     *(pixel_ctrl_ptr + 1) = (int) &Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
-    printf("Second clear of the screen\n");
+    //printf("Second clear of the screen\n");
 
     while (1){     
          // draw boxes lines, erase, and update directions if necessary
@@ -95,25 +95,25 @@ void draw(int pixelInfo[8][4]){ //draw the box and the line
     //draw 8 boxes and draw 8 lines connecting them
     for(int i = 0; i < 8; i++){
         draw_box(pixelInfo[i][0], pixelInfo[i][1], 0x07E0);
-
+    
         if(i == 7){ //connect the first box to the last one 
-            draw_line(pixelInfo[0][0], pixelInfo[0][1], pixelInfo[7][0], pixelInfo[7][1], 0x07E0);
+            draw_line(pixelInfo[0][0]+1, pixelInfo[0][1]+1, pixelInfo[7][0]+1, pixelInfo[7][1]+1, 0x07E0);
         } 
 
         else{
-            draw_line(pixelInfo[i][0], pixelInfo[i][1], pixelInfo[i+1][0], pixelInfo[i+1][1], 0x07E0);
+            draw_line(pixelInfo[i][0]+1, pixelInfo[i][1]+1, pixelInfo[i+1][0]+1, pixelInfo[i+1][1]+1, 0x07E0);
         }
 
     }
-    //store the previous locations
-    // if(*(pixel_ctrl_ptr + 1) == (int) &Buffer1){ //wrote to buffer 1
-    //     storePrev(pixelInfo, pixelInfoBuf1);
-    // }
 
-    // else{
-    //     storePrev(pixelInfo, pixelInfoBuf2);
-    // }
-    storePrev(pixelInfo, (pixel_buffer_start == (int)&Buffer1) ? pixelInfoBuf1 : pixelInfoBuf2);
+    //store the previous locations
+    if(*(pixel_ctrl_ptr + 1) == (int) &Buffer1){ //wrote to buffer 1
+        storePrev(pixelInfo, pixelInfoBuf1);
+    }
+
+    else{
+        storePrev(pixelInfo, pixelInfoBuf2);
+    }
 
     
     //update the box position for the next frame (modify the pixelInfo array)
@@ -124,67 +124,54 @@ void draw(int pixelInfo[8][4]){ //draw the box and the line
 
 }
 
-void checkNewDirection(int pixelInfo[8][4]){ //call this function when the x or y go out of bounds 
-    //check if any pixel has gone out of bounds 
-    for(int i = 0; i < 8; i++){ // each row in the pixelInfo array (pixel number)
-        //each column in the pixelInfo array
-        if((pixelInfo[i][0] == 319 && pixelInfo[i][1] == 239)
-            || (pixelInfo[i][0] == 319 || pixelInfo[i][1] == 0)
-            || (pixelInfo[i][0] == 0 || pixelInfo[i][1] == 239) 
-            || (pixelInfo[i][0] == 0 || pixelInfo[i][1] == 0)){
-            //in the case where a pixel has gone out of bounds 
-            //Flip the direction 
-            // and update the direction in the pixelInfo array 
+void checkNewDirection(int pixelInfo[8][4]){
+    for(int i = 0; i < 8; i++){
+        if(pixelInfo[i][0] <= 0 || pixelInfo[i][0] >= 317) { 
             pixelInfo[i][2] = -pixelInfo[i][2];
+        }
+        if(pixelInfo[i][1] <= 0 || pixelInfo[i][1] >= 237) { 
             pixelInfo[i][3] = -pixelInfo[i][3];
         }
-        
-
     }
-
 }
 
 void erasePrev(int pixelInfoBuf1[][2], int pixelInfoBuf2[][2]){ //erase the previous iteration of lines and boxes
     //determine which buffer we drew to to figure out the locations of what we want to erase
     if(*(pixel_ctrl_ptr + 1) == (int) &Buffer1) {
         for(int i = 0; i < 8; i++){
-            draw_box(pixelInfoBuf1[i][0], pixelInfoBuf1[i][1], 0);
+            draw_box(pixelInfoBuf1[i][0], pixelInfoBuf1[i][1], 0xFFFF);
             if(i == 7){ //connect the first box to the last one 
-                draw_line(pixelInfoBuf1[0][0], pixelInfoBuf1[0][1], pixelInfoBuf1[7][0], pixelInfoBuf1[7][1], 0);
-            } else {
-                draw_line(pixelInfoBuf1[i][0], pixelInfoBuf1[i][1], pixelInfoBuf1[i+1][0], pixelInfoBuf1[i+1][1], 0);
+                draw_line(pixelInfoBuf1[0][0]+1, pixelInfoBuf1[0][1]+1, pixelInfoBuf1[7][0]+1, pixelInfoBuf1[7][1]+1, 0xFFFF);
+            } 
+            else {
+                draw_line(pixelInfoBuf1[i][0]+1, pixelInfoBuf1[i][1]+1, pixelInfoBuf1[i+1][0]+1, pixelInfoBuf1[i+1][1]+1, 0xFFFF);
             }
         }
-    } else { //we drew to buffer 2
+    } else { 
         for(int i = 0; i < 8; i++){
-            draw_box(pixelInfoBuf2[i][0], pixelInfoBuf2[i][1], 0);
+            draw_box(pixelInfoBuf2[i][0], pixelInfoBuf2[i][1], 0xFFFF);
             if(i == 7){ //connect the first box to the last one 
-                draw_line(pixelInfoBuf2[0][0], pixelInfoBuf2[0][1], pixelInfoBuf2[7][0], pixelInfoBuf2[7][1], 0);
+                draw_line(pixelInfoBuf2[0][0]+1, pixelInfoBuf2[0][1]+1, pixelInfoBuf2[7][0]+1, pixelInfoBuf2[7][1]+1, 0xFFFF);
             } else {
-                draw_line(pixelInfoBuf2[i][0], pixelInfoBuf2[i][1], pixelInfoBuf2[i+1][0], pixelInfoBuf2[i+1][1], 0);
+                draw_line(pixelInfoBuf2[i][0]+1, pixelInfoBuf2[i][1]+1, pixelInfoBuf2[i+1][0]+1, pixelInfoBuf2[i+1][1]+1, 0xFFFF);
             }
         }
     }
 }
 
 
-void draw_box(int x1, int y1, short int colour){ //draw a singular box 
-    //draw a 3 by 3 box on the screen, where (x1, y1) is the top left corner 
-    // for(int i = y1; i < y1+3; i++){
-    //     for(int j = x1; j < x1+3; j++){
-    //         plot_pixel(x1,y1, 0x07E0);
-    //     }
-    // }
-
-
-    plot_pixel(x1,y1, 0x07E0);
-
+void draw_box(int x1, int y1, short int colour){
+    for(int i = 0; i < 3; i++){
+        for(int j = 0; j < 3; j++){
+            plot_pixel(x1+j, y1+i, colour);
+        }
+    }
 }
 
 void clear_screen(){ //make the screen entirely white 
     for(int y = 0; y <= 239; y++){
         for(int x = 0; x <= 319; x++){
-            plot_pixel(x,y,0);
+            plot_pixel(x,y,0xFFFF);
         }
     }
 
@@ -242,7 +229,7 @@ void draw_line(int x1, int y1, int x2, int y2, short int colour){ //draw a line 
 
 void plot_pixel(int x, int y, short int line_color)
 {
-    volatile short int *one_pixel_address;
+    short int *one_pixel_address;
     if(y < 240 && y >= 0 && x >= 0 && x < 320) {
         one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
         *one_pixel_address = line_color;
