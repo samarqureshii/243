@@ -11,12 +11,15 @@ Use double buffering
 #include <stdbool.h>
 #include <time.h>
 
-volatile short int *pixel_buffer_start; // global variable
-volatile int * pixel_ctrl_ptr = (int *) 0xff203030; // base address
+//volatile short int *pixel_buffer_start; // global variable
+
+int pixel_buffer_start; // global variable
+volatile int * pixel_ctrl_ptr = (int *) 0xff203020; // base address
 short int Buffer1[240][320]; // 240 rows, 512 (320 + padding) columns
 short int Buffer2[240][320];
 int pixelInfoBuf1[8][2] = {0};
 int pixelInfoBuf2[8][2] = {0};
+int pixelInfo[8][4] = {0};
 
 //function declarations
 void wait_for_vsync(void);
@@ -32,14 +35,14 @@ void storePrev(int pixelInfo[][4], int pixelInfoBuf[][2]);
 int main(void){
     //srand(time(NULL)); //seed the start locations
     // global  and directions of each of the boxes (referenced by the top left corner)
-    int x1 = rand() % 320, y1 = rand() % 240, direction_x1 = (rand() % 2) * 2 - 1, direction_y1 = (rand() % 2) * 2 - 1;
-    int x2 = rand() % 320, y2 = rand() % 240, direction_x2 = (rand() % 2) * 2 - 1, direction_y2 = (rand() % 2) * 2 - 1;
-    int x3 = rand() % 320, y3 = rand() % 240, direction_x3 = (rand() % 2) * 2 - 1, direction_y3 = (rand() % 2) * 2 - 1;
-    int x4 = rand() % 320, y4 = rand() % 240, direction_x4 = (rand() % 2) * 2 - 1, direction_y4 = (rand() % 2) * 2 - 1;
-    int x5 = rand() % 320, y5 = rand() % 240, direction_x5 = (rand() % 2) * 2 - 1, direction_y5 = (rand() % 2) * 2 - 1;
-    int x6 = rand() % 320, y6 = rand() % 240, direction_x6 = (rand() % 2) * 2 - 1, direction_y6 = (rand() % 2) * 2 - 1;
-    int x7 = rand() % 320, y7 = rand() % 240, direction_x7 = (rand() % 2) * 2 - 1, direction_y7 = (rand() % 2) * 2 - 1;
-    int x8 = rand() % 320, y8 = rand() % 240, direction_x8 = (rand() % 2) * 2 - 1, direction_y8 = (rand() % 2) * 2 - 1;
+    int x1 = rand() % 300, y1 = rand() % 200, direction_x1 = (rand() % 2) * 2 - 1, direction_y1 = (rand() % 2) * 2 - 1;
+    int x2 = rand() % 300, y2 = rand() % 200, direction_x2 = (rand() % 2) * 2 - 1, direction_y2 = (rand() % 2) * 2 - 1;
+    int x3 = rand() % 300, y3 = rand() % 200, direction_x3 = (rand() % 2) * 2 - 1, direction_y3 = (rand() % 2) * 2 - 1;
+    int x4 = rand() % 300, y4 = rand() % 200, direction_x4 = (rand() % 2) * 2 - 1, direction_y4 = (rand() % 2) * 2 - 1;
+    int x5 = rand() % 300, y5 = rand() % 200, direction_x5 = (rand() % 2) * 2 - 1, direction_y5 = (rand() % 2) * 2 - 1;
+    int x6 = rand() % 300, y6 = rand() % 200, direction_x6 = (rand() % 2) * 2 - 1, direction_y6 = (rand() % 2) * 2 - 1;
+    int x7 = rand() % 300, y7 = rand() % 200, direction_x7 = (rand() % 2) * 2 - 1, direction_y7 = (rand() % 2) * 2 - 1;
+    int x8 = rand() % 300, y8 = rand() % 200, direction_x8 = (rand() % 2) * 2 - 1, direction_y8 = (rand() % 2) * 2 - 1;
     //initialize each pixel with a random start location and random direction 
 
     //store this nicer in an array so we can traverse through it better 
@@ -56,20 +59,21 @@ int main(void){
 
     /* set front pixel buffer to Buffer 1 */
     *(pixel_ctrl_ptr + 1) = (int) &Buffer1; // first store the address in the  back buffer
-
     /* now, swap the front/back buffers, to set the front buffer location */
     wait_for_vsync();
     /* initialize a pointer to the pixel buffer, used by drawing functions */
     pixel_buffer_start = *pixel_ctrl_ptr;
-    clear_screen(); // pixel_buffer_start points to the pixel buffer
+    clear_screen();
+     // pixel_buffer_start points to the pixel buffer
+    printf("Initial clear of the screen\n");
 
     /* set back pixel buffer to Buffer 2 */
     *(pixel_ctrl_ptr + 1) = (int) &Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
+    printf("Second clear of the screen\n");
 
     while (1){     
-        
          // draw boxes lines, erase, and update directions if necessary
         draw(pixelInfo);
 
@@ -92,25 +96,25 @@ void draw(int pixelInfo[8][4]){ //draw the box and the line
     for(int i = 0; i < 8; i++){
         draw_box(pixelInfo[i][0], pixelInfo[i][1], 0x07E0);
 
-    }
-
-    for(int i = 0; i < 8; i++){
         if(i == 7){ //connect the first box to the last one 
-            draw_line(pixelInfo[7][0], pixelInfo[7][1], pixelInfo[0][0], pixelInfo[0][1], 0x07E0);
+            draw_line(pixelInfo[0][0], pixelInfo[0][1], pixelInfo[7][0], pixelInfo[7][1], 0x07E0);
         } 
-        else {
+
+        else{
             draw_line(pixelInfo[i][0], pixelInfo[i][1], pixelInfo[i+1][0], pixelInfo[i+1][1], 0x07E0);
         }
-    }
 
+    }
     //store the previous locations
-    if(*(pixel_ctrl_ptr + 1) == (int) &Buffer1){ //wrote to buffer 1
-        storePrev(pixelInfo, pixelInfoBuf1);
-    }
+    // if(*(pixel_ctrl_ptr + 1) == (int) &Buffer1){ //wrote to buffer 1
+    //     storePrev(pixelInfo, pixelInfoBuf1);
+    // }
 
-    else{
-        storePrev(pixelInfo, pixelInfoBuf2);
-    }
+    // else{
+    //     storePrev(pixelInfo, pixelInfoBuf2);
+    // }
+    storePrev(pixelInfo, (pixel_buffer_start == (int)&Buffer1) ? pixelInfoBuf1 : pixelInfoBuf2);
+
     
     //update the box position for the next frame (modify the pixelInfo array)
     for(int i = 0; i < 8; i++){
