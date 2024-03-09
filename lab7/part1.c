@@ -25,54 +25,47 @@ void clear_screen(){ //make the screen entirely black
 
 }
 
-void draw_line(int x1, int y1, int x2, int y2, short int colour){ //draw a line given (x1,y1) and (x2, y2) and the colour
-    //figure out whether to traverse x or traverse y 
-    bool isSteep = abs(y2-y1) > abs(x2-x1); 
-    if (isSteep){ //swap x and y 
-        int temp = y1;
-        y1 = x1;
-        x1 = temp;
-
-        temp = y2;
-        y2 = x2;
-        x2 = temp;
+void draw_line(int x1, int y1, int x2, int y2, short int colour){
+    bool isSteep = abs(y2 - y1) > abs(x2 - x1);
+    if (isSteep) {
+        swap(&x1, &y1);
+        swap(&x2, &y2);
     }
 
-    if(x1 > x2){ //swap the points
-        int temp = x1;
-        x1 = x2;
-        x2 = temp;
-
-        temp = y1;
-        y1 = y2;
-        y2 = temp;
+    if (x1 > x2) {
+        // swap the start and end points if x2 is less than x1
+        swap(&x1, &x2);
+        swap(&y1, &y2);
     }
 
-    // calculate the delta (error) to determine how often y should be incremented 
-    int deltaX = x2-x1;
-    int deltaY = y2-y1;
-    int error = -(deltaX/2);
-    int y = y1; //because we swapped points accordingly above, we can safely assume y = mx + b and y-y1 = m(x-x1) notation for now
-    int yStep;
+    int deltaX = x2 - x1;
+    int deltaY = abs(y2 - y1);
+    int error = -(deltaX / 2); // initialize error term to negative half delta X
+    int y = y1;
+    int yStep = (y1 < y2) ? 1 : -1;
 
-    yStep = y1 < y2 ? 1 : -1; 
-
-    for(int x = x1; x <= x2; x++){
-        if(isSteep){
-            plot_pixel(y,x, colour);
+    for (int x = x1; x <= x2; x++) {
+        if (isSteep) {
+            plot_pixel(y, x, colour); 
+        } 
+        
+        else {
+            plot_pixel(x, y, colour);
         }
 
-        else{
-            plot_pixel(x,y, colour);
-        }
+        error += deltaY; 
 
-        error+=deltaY;
-
-        if(error > 0){
-            y+=yStep;
-            error-=deltaX;
+        if (error >= 0) {
+            y += yStep;
+            error -= deltaX; 
         }
     }
+}
+
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
 }
 
 
