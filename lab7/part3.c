@@ -100,6 +100,7 @@ void checkNewDirection(int pixelInfo[8][4]);
 void draw(int pixelInfo[8][4], short int colour);
 void erasePrev(int pixelInfoBuf[][2]);
 void storePrev(int pixelInfo[][4], int pixelInfoBuf[][2]);
+void swap(int *a, int *b);
 
 int main(void){
     srand(time(NULL)); //seed the start locations
@@ -260,6 +261,12 @@ void clear_screen(){ //make the screen entirely white
 
 }
 
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
 void draw_line(int x1, int y1, int x2, int y2, short int colour){
     bool isSteep = abs(y2 - y1) > abs(x2 - x1);
     if (isSteep) {
@@ -297,18 +304,11 @@ void draw_line(int x1, int y1, int x2, int y2, short int colour){
     }
 }
 
-void swap(int *a, int *b) {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-
 void plot_pixel(int x, int y, short int line_color)
 {
     short int *one_pixel_address;
     if(y < 240 && y >= 0 && x >= 0 && x < 320) {
-        one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
+       one_pixel_address = (short int *)((unsigned int)pixel_buffer_start + (y << 10) + (x << 1));
         *one_pixel_address = line_color;
     }
 }
